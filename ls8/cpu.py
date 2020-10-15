@@ -6,6 +6,9 @@ HLT = 0b00000001
 LDI = 0b10000010
 PRN = 0b01000111
 MUL = 0b10100010
+POP = 0b01000110
+PUSH = 0b01000101
+SP = 7
 
 
 class CPU:
@@ -14,9 +17,9 @@ class CPU:
         """Construct a new CPU."""
         self.reg = [0] * 8
         self.ram = [0] * 256
-        # self.reg[7] = 0xF4
         self.halted = False
         self.pc = 0
+        self.reg[SP] = 0xF4
 
     def ram_read(self, address):
         return self.ram[address]
@@ -104,22 +107,47 @@ class CPU:
     def run(self):
         """Run the CPU."""
         while not self.halted:
-            instructions = self.ram[self.pc]
+            instruction = self.ram[self.pc]
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
 
-            if instructions == HLT:
+            if instruction == HLT:
                 self.halted = True
                 self.pc = 0
 
-            elif instructions == LDI:
+            elif instruction == LDI:
                 self.reg[operand_a] = operand_b
                 self.pc += 3
 
-            elif instructions == PRN:
+            elif instruction == PRN:
                 print(self.reg[operand_a])
                 self.pc += 2
 
-            elif instructions == MUL:
+            elif instruction == MUL:
                 self.alu("MUL", operand_a, operand_b)
                 self.pc += 3
+
+            elif instruction == POP:
+                reg_num = self.ram_read(self.pc + 1)
+                top_of_stack_address = self.reg[
+                    SP]  # Get the top of stack addr
+                value = self.ram_read(
+                    top_of_stack_address
+                )  # Get the value at the top of the stack
+
+                self.reg[reg_num] = value  # Store the value in the register
+                self.reg[SP] += 1  # Increment the SP
+                self.pc += 2  # Increment program counter to the next instruction
+
+            elif instruction == PUSH:
+                self.reg[SP] -= 1  # Decrement Stack Pointer(SP)
+                reg_num = self.ram_read(self.pc + 1)  # Get the reg num to push
+                value = self.reg[reg_num]  # Get the value to push
+                top_of_stack_address = self.reg[
+                    SP]  # Copy the value to the SP address
+                self.ram[top_of_stack_address] = value
+                self.pc += 2
+
+            # else:
+            #     print(f"unknown instruction {instruction} at address {pc}")
+            #     sys.exit(1)
